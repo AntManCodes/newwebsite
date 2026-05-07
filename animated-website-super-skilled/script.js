@@ -507,7 +507,7 @@ function drinkCard(drink, opts = {}) {
           ${drink.strCategory ? `<span class="drink-meta-tag">${drink.strCategory}</span>` : ''}
           ${drink.strGlass ? `<span class="drink-meta-tag">${drink.strGlass}</span>` : ''}
         </div>
-        ${missing.length > 0 ? `<p class="drink-missing">Needs: ${missing.slice(0, 3).join(', ')}${missing.length > 3 ? '…' : ''}</p>` : ''}
+        ${missing.length > 0 ? `<p class="drink-missing">Needs: ${missing.slice(0, 3).map(m => typeof m === 'string' ? m : m.ingredient).join(', ')}${missing.length > 3 ? '…' : ''}</p>` : ''}
       </div>
     </div>`;
 }
@@ -1046,24 +1046,24 @@ async function runAI() {
 
   // Analyze API drinks
   const analyzed = details.filter(Boolean).map(drink => {
-    const drinkIngs = getDrinkIngredients(drink).map(i => i.name.toLowerCase());
-    const matched = drinkIngs.filter(di => userIngs.some(ui => fuzzyMatch(di, ui)));
-    const missing = drinkIngs.filter(di => !userIngs.some(ui => fuzzyMatch(di, ui)));
+    const drinkIngObjs = getDrinkIngredients(drink);
+    const drinkIngs    = drinkIngObjs.map(i => i.name.toLowerCase());
+    const matched      = drinkIngs.filter(di => userIngs.some(ui => fuzzyMatch(di, ui)));
+    const missingObjs  = drinkIngObjs.filter(i => !userIngs.some(ui => fuzzyMatch(i.name.toLowerCase(), ui)));
     const pct = drinkIngs.length ? Math.round((matched.length / drinkIngs.length) * 100) : 0;
-    return { drink, pct, missing: missing.map(m => capitalize(m)) };
+    return { drink, pct, missing: missingObjs.map(i => ({ ingredient: capitalize(i.name), measure: i.measure || '' })) };
   });
 
   // Analyze community drinks
   const commAnalyzed = [...SAMPLE_COMMUNITY, ...state.myRecipes].map(recipe => {
-    const recipeIngs = parseIngsText(recipe.ingredients || '')
-      .filter(i => !isDecorative(i.name))
-      .map(i => i.name.toLowerCase());
+    const recipeIngObjs = parseIngsText(recipe.ingredients || '').filter(i => !isDecorative(i.name));
+    const recipeIngs    = recipeIngObjs.map(i => i.name.toLowerCase());
     if (!recipeIngs.length) return null;
-    const matched = recipeIngs.filter(ri => userIngs.some(ui => fuzzyMatch(ri, ui)));
-    const missing = recipeIngs.filter(ri => !userIngs.some(ui => fuzzyMatch(ri, ui)));
+    const matched      = recipeIngs.filter(ri => userIngs.some(ui => fuzzyMatch(ri, ui)));
+    const missingObjs  = recipeIngObjs.filter(i => !userIngs.some(ui => fuzzyMatch(i.name.toLowerCase(), ui)));
     const pct = Math.round((matched.length / recipeIngs.length) * 100);
     if (pct === 0) return null;
-    return { drink: commToExploreCard(recipe), pct, missing: missing.map(capitalize) };
+    return { drink: commToExploreCard(recipe), pct, missing: missingObjs.map(i => ({ ingredient: capitalize(i.name), measure: i.measure || '' })) };
   }).filter(Boolean);
 
   // Merge — skip community drinks already returned by API (same name)
@@ -1113,9 +1113,9 @@ function aiResultCard(d) {
   const card = drinkCard(d.drink, { matchPct: d.pct, missing: d.missing });
   if (!d.missing || !d.missing.length) return card;
   const alreadyAll = d.missing.every(m =>
-    state.shoppingList.some(s => s.ingredient.toLowerCase() === m.toLowerCase())
+    state.shoppingList.some(s => s.ingredient.toLowerCase() === m.ingredient.toLowerCase())
   );
-  const missingEncoded = d.missing.join('||');
+  const missingEncoded = encodeURIComponent(JSON.stringify(d.missing));
   const drinkName = d.drink.strDrink;
   return `<div class="ai-result-wrap">
     ${card}
@@ -1126,12 +1126,14 @@ function aiResultCard(d) {
   </div>`;
 }
 
-function addToShoppingList(missingArr, drinkName) {
+function addToShoppingList(itemsArr, drinkName) {
   let added = 0;
-  missingArr.forEach(ingredient => {
+  itemsArr.forEach(item => {
+    const ingredient = typeof item === 'string' ? item : item.ingredient;
+    const measure    = typeof item === 'string' ? '' : (item.measure || '');
     const already = state.shoppingList.some(s => s.ingredient.toLowerCase() === ingredient.toLowerCase());
     if (!already) {
-      state.shoppingList.push({ ingredient: capitalize(ingredient), drinkName, checked: false });
+      state.shoppingList.push({ ingredient: capitalize(ingredient), measure, drinkName, checked: false });
       added++;
     }
   });
@@ -1187,7 +1189,7 @@ function renderShoppingList() {
           <label class="shopping-check-label">
             <input type="checkbox" class="shopping-checkbox" data-idx="${item.idx}" ${item.checked ? 'checked' : ''}>
             <span class="shopping-checkmark"></span>
-            <span class="shopping-ing-name">${item.ingredient}</span>
+            <span class="shopping-ing-name">${item.measure ? `<span class="shopping-measure">${item.measure}</span> ` : ''}${item.ingredient}</span>
           </label>
           <button class="shopping-remove" data-remove="${item.idx}" aria-label="Remove">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -1242,6 +1244,10 @@ async function openModal(drinkId) {
             ${isFav ? 'Saved' : 'Save to Favorites'}
           </button>
           <button class="btn-secondary modal-addbar-btn">+ Add Ingredients to Bar</button>
+          <button class="btn-secondary modal-shop-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+            Add to Shopping List
+          </button>
         </div>
       </div>
     </div>`;
@@ -1261,6 +1267,15 @@ async function openModal(drinkId) {
     state.inventory.push(...fresh);
     save();
     toast(`Added ${fresh.length} new ingredient${fresh.length !== 1 ? 's' : ''} to your bar!`, 'success');
+  });
+
+  // Add all ingredients to shopping list
+  body.querySelector('.modal-shop-btn').addEventListener('click', function () {
+    const allItems = ings.map(i => ({ ingredient: capitalize(i.name), measure: i.measure || '' }));
+    addToShoppingList(allItems, drink.strDrink);
+    this.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg> Added!`;
+    this.disabled = true;
+    this.style.opacity = '0.6';
   });
 }
 
@@ -1613,7 +1628,7 @@ document.getElementById('clearShoppingBtn').addEventListener('click', () => {
 document.getElementById('aiResults').addEventListener('click', e => {
   const btn = e.target.closest('.btn-add-shopping');
   if (!btn) return;
-  const missing  = btn.dataset.missing.split('||').map(s => s.trim()).filter(Boolean);
+  const missing   = JSON.parse(decodeURIComponent(btn.dataset.missing));
   const drinkName = btn.dataset.drink;
   addToShoppingList(missing, drinkName);
   btn.classList.add('added');

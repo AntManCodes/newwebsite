@@ -753,6 +753,7 @@ p { margin: 0; }
   transform: rotate(45deg) translate(-1px,-1px);
 }
 .shopping-ing-name { font-size: .9rem; color: var(--text); }
+.shopping-measure { font-size: .8rem; color: var(--primary-lt); font-weight: 600; margin-right: 2px; }
 .shopping-remove {
   width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
