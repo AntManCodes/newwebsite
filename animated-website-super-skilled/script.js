@@ -3,6 +3,17 @@
    TheCocktailDB API + LocalStorage
 ═══════════════════════════════════════ */
 
+function enterSite() {
+  var gate = document.getElementById('ageGate');
+  var app  = document.getElementById('app');
+  if (gate) { gate.style.transition = 'opacity .4s ease'; gate.style.opacity = '0'; }
+  setTimeout(function () {
+    if (gate) gate.style.display = 'none';
+    if (app)  app.removeAttribute('hidden');
+    try { goTo('home'); } catch (e) { /* goTo may not be ready yet */ }
+  }, 400);
+}
+
 const API = 'https://www.thecocktaildb.com/api/json/v1/1';
 
 const TRENDING = ['Margarita', 'Mojito', 'Negroni', 'Old Fashioned', 'Espresso Martini', 'Cosmopolitan'];
@@ -717,7 +728,8 @@ document.getElementById('spiritChips').addEventListener('click', async e => {
   await loadExplore();
 });
 
-document.getElementById('loadMoreBtn').addEventListener('click', () => {
+const _loadMoreBtn = document.getElementById('loadMoreBtn');
+if (_loadMoreBtn) _loadMoreBtn.addEventListener('click', () => {
   _exploreVisible += 12;
   renderExploreGrid();
 });
@@ -1593,13 +1605,14 @@ function capitalize(str) { return str.replace(/\b\w/g, c => c.toUpperCase()); }
 load();
 
 document.getElementById('enterBtn').addEventListener('click', () => {
-  document.getElementById('ageGate').style.transition = 'opacity .4s ease';
-  document.getElementById('ageGate').style.opacity = '0';
+  const gate = document.getElementById('ageGate');
+  gate.style.transition = 'opacity .4s ease';
+  gate.style.opacity = '0';
   setTimeout(() => {
-    document.getElementById('ageGate').style.display = 'none';
+    gate.style.display = 'none';
     document.getElementById('app').removeAttribute('hidden');
+    goTo('home');
   }, 400);
-  goTo('home');
 });
 
 // Immediately start loading home content in background
