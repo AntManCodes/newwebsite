@@ -1,0 +1,125 @@
+Create a modern, responsive web application called **“MixMaster AI”** (name can be changed) focused on bartending, drink discovery, and intelligent recipe generation.
+
+## Core Concept
+
+This website is a comprehensive drink database combined with an AI-powered bartender. It allows users to explore thousands of cocktails, mocktails, and mixed drinks while also generating personalized drink recipes based on ingredients they already have.
+
+## Key Features
+
+### 1. Massive Drink Database
+
+* Include cocktails, mocktails, classic drinks, and unique mixes
+* Each drink should have:
+
+  * Ingredients list
+  * Step-by-step instructions
+  * Glass type
+  * Garnish suggestions
+  * Difficulty level
+  * Alcoholic / non-alcoholic tags
+* Add filtering by:
+
+  * Ingredients
+  * Alcohol type (vodka, rum, whiskey, etc.)
+  * Flavor profile (sweet, sour, bitter, fruity)
+  * Occasion (party, casual, formal)
+
+---
+
+### 2. AI Bartender (Main Feature)
+
+* Input box where users type ingredients they have at home
+* AI suggests:
+
+  * Drinks they can make exactly
+  * Drinks they can almost make (with 1–2 missing ingredients)
+  * Creative new recipes based on those ingredients
+* Display results in a clean card layout with images and instructions
+
+---
+
+### 3. Smart Ingredient Matching System
+
+* Recognize synonyms (e.g., lime vs lime juice)
+* Suggest substitutions
+* Rank recipes by match percentage
+
+---
+
+### 4. User Accounts & Personalization
+
+* Users can create accounts and securely log in
+* Each user has a personal dashboard/profile
+* Features include:
+
+  * Save and manage favorite drinks
+  * Build a “My Bar” inventory (ingredients they own)
+  * Receive personalized drink recommendations
+  * View history of previously generated AI drinks
+
+---
+
+### 5. User-Created Drinks (Community Feature)
+
+* Users can create and submit their own drink recipes
+* Submission form includes:
+
+  * Drink name
+  * Ingredients
+  * Instructions
+  * Optional image upload
+  * Tags (flavor, alcohol type, occasion)
+* Users can:
+
+  * Save their own creations
+  * Share them publicly
+  * Edit or delete their recipes
+* Optional: allow rating, liking, or commenting on community drinks
+
+---
+
+### 6. Search & Discovery
+
+* Fast search bar with autocomplete
+* Trending drinks section
+* “Random drink” button
+* Featured community creations
+
+---
+
+### 7. Clean UI/UX Design
+
+* Dark mode default (bar-style aesthetic)
+* Glassmorphism or modern minimal design
+* High-quality drink images
+* Smooth animations and transitions
+
+---
+
+### 8. Mobile-Friendly
+
+* Fully responsive design optimized for phones
+* Easy scrolling and tap interactions
+
+---
+
+## Technical Expectations
+
+* Use a modern frontend (React or similar)
+* Backend supports a large structured drink database
+* Authentication system for user accounts
+* Database for storing favorites and user-created drinks
+* AI integration for ingredient-based recommendations
+* Fast loading and scalable
+
+---
+
+## Goal
+
+The final product should feel like a combination of:
+
+* A professional cocktail encyclopedia
+* A personalized AI bartender
+* A social platform for sharing drink creations
+
+The experience should be intuitive, visually appealing, and genuinely useful for both beginners and experienced bartenders.
