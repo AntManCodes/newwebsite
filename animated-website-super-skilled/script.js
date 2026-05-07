@@ -311,6 +311,7 @@ const state = {
   favorites: [],
   inventory: [],
   myRecipes: [],
+  shoppingList: [],
   ingredients: [],
   currentPage: 'home',
   exploreResults: [],
@@ -327,12 +328,14 @@ function save() {
   localStorage.setItem('mm_favorites', JSON.stringify(state.favorites));
   localStorage.setItem('mm_inventory', JSON.stringify(state.inventory));
   localStorage.setItem('mm_recipes',   JSON.stringify(state.myRecipes));
+  localStorage.setItem('mm_shopping',  JSON.stringify(state.shoppingList));
 }
 function load() {
-  state.user      = JSON.parse(localStorage.getItem('mm_user')      || 'null');
-  state.favorites = JSON.parse(localStorage.getItem('mm_favorites') || '[]');
-  state.inventory = JSON.parse(localStorage.getItem('mm_inventory') || '[]');
-  state.myRecipes = JSON.parse(localStorage.getItem('mm_recipes')   || '[]');
+  state.user         = JSON.parse(localStorage.getItem('mm_user')      || 'null');
+  state.favorites    = JSON.parse(localStorage.getItem('mm_favorites') || '[]');
+  state.inventory    = JSON.parse(localStorage.getItem('mm_inventory') || '[]');
+  state.myRecipes    = JSON.parse(localStorage.getItem('mm_recipes')   || '[]');
+  state.shoppingList = JSON.parse(localStorage.getItem('mm_shopping')  || '[]');
 }
 
 // ── FETCH HELPERS ──────────────────────────────────
@@ -1060,9 +1063,9 @@ async function runAI() {
 
   pEl.innerHTML  = perfect.length  ? perfect.map(d  => drinkCard(d.drink, { matchPct: d.pct })).join('')
                                     : `<p class="no-results-msg">No perfect matches — try adding more ingredients!</p>`;
-  nEl.innerHTML  = near.length     ? near.map(d    => drinkCard(d.drink, { matchPct: d.pct, missing: d.missing })).join('')
+  nEl.innerHTML  = near.length     ? near.map(d    => aiResultCard(d)).join('')
                                     : `<p class="no-results-msg">No near matches found.</p>`;
-  ptEl.innerHTML = partial.length  ? partial.map(d  => drinkCard(d.drink, { matchPct: d.pct })).join('') : '';
+  ptEl.innerHTML = partial.length  ? partial.map(d  => aiResultCard(d)).join('') : '';
 
   document.getElementById('rsPerfect').style.display  = perfect.length ? '' : '';
   document.getElementById('rsNear').style.display      = near.length ? '' : '';
@@ -1078,12 +1081,98 @@ function fuzzyMatch(a, b) {
   a = a.toLowerCase().trim(); b = b.toLowerCase().trim();
   if (a === b) return true;
   if (a.includes(b) || b.includes(a)) return true;
-  // Handle common synonyms
   const synonyms = { 'lime juice': ['lime'], 'lemon juice': ['lemon'], 'simple syrup': ['sugar syrup', 'syrup'], 'soda water': ['club soda', 'carbonated water'], 'whiskey': ['whisky', 'bourbon'] };
   for (const [key, vals] of Object.entries(synonyms)) {
     if ((a === key || vals.includes(a)) && (b === key || vals.includes(b))) return true;
   }
   return false;
+}
+
+function aiResultCard(d) {
+  const card = drinkCard(d.drink, { matchPct: d.pct, missing: d.missing });
+  if (!d.missing || !d.missing.length) return card;
+  const alreadyAll = d.missing.every(m =>
+    state.shoppingList.some(s => s.ingredient.toLowerCase() === m.toLowerCase())
+  );
+  const missingEncoded = d.missing.join('||');
+  const drinkName = d.drink.strDrink;
+  return `<div class="ai-result-wrap">
+    ${card}
+    <button class="btn-add-shopping${alreadyAll ? ' added' : ''}" data-missing="${missingEncoded}" data-drink="${drinkName}">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;flex-shrink:0"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+      ${alreadyAll ? 'Added to Shopping List' : `Add ${d.missing.length} missing ingredient${d.missing.length > 1 ? 's' : ''} to Shopping List`}
+    </button>
+  </div>`;
+}
+
+function addToShoppingList(missingArr, drinkName) {
+  let added = 0;
+  missingArr.forEach(ingredient => {
+    const already = state.shoppingList.some(s => s.ingredient.toLowerCase() === ingredient.toLowerCase());
+    if (!already) {
+      state.shoppingList.push({ ingredient: capitalize(ingredient), drinkName, checked: false });
+      added++;
+    }
+  });
+  save();
+  updateShoppingBadge();
+  if (added > 0) toast(`Added ${added} ingredient${added > 1 ? 's' : ''} to your Shopping List!`, 'success');
+  else toast('All ingredients already in your Shopping List.', 'info');
+}
+
+function updateShoppingBadge() {
+  const unchecked = state.shoppingList.filter(i => !i.checked).length;
+  const badge = document.getElementById('shoppingBadge');
+  if (badge) {
+    badge.textContent = unchecked || '';
+    badge.classList.toggle('hidden', !unchecked);
+  }
+}
+
+function renderShoppingList() {
+  const wrap    = document.getElementById('shoppingListItems');
+  const empty   = document.getElementById('shoppingEmpty');
+  const countEl = document.getElementById('shoppingCount');
+  const list    = state.shoppingList;
+
+  if (!list.length) {
+    wrap.innerHTML = '';
+    empty.classList.remove('hidden');
+    if (countEl) countEl.textContent = '0 items';
+    return;
+  }
+  empty.classList.add('hidden');
+  if (countEl) {
+    const unchecked = list.filter(i => !i.checked).length;
+    countEl.textContent = `${unchecked} of ${list.length} to get`;
+  }
+
+  // Group by drinkName
+  const groups = {};
+  list.forEach((item, idx) => {
+    const key = item.drinkName || 'Other';
+    if (!groups[key]) groups[key] = [];
+    groups[key].push({ ...item, idx });
+  });
+
+  wrap.innerHTML = Object.entries(groups).map(([drink, items]) => `
+    <div class="shopping-group">
+      <div class="shopping-group-label">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;opacity:.6"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v1A2.5 2.5 0 0 1 9.5 8H9a7 7 0 0 0-7 7v1h20v-1a7 7 0 0 0-7-7h-.5A2.5 2.5 0 0 1 12 5.5v-1A2.5 2.5 0 0 1 14.5 2z"/><path d="M3 16h18v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+        ${drink}
+      </div>
+      ${items.map(item => `
+        <div class="shopping-item ${item.checked ? 'checked' : ''}">
+          <label class="shopping-check-label">
+            <input type="checkbox" class="shopping-checkbox" data-idx="${item.idx}" ${item.checked ? 'checked' : ''}>
+            <span class="shopping-checkmark"></span>
+            <span class="shopping-ing-name">${item.ingredient}</span>
+          </label>
+          <button class="shopping-remove" data-remove="${item.idx}" aria-label="Remove">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>`).join('')}
+    </div>`).join('');
 }
 
 // ── DRINK MODAL ────────────────────────────────────
@@ -1466,7 +1555,48 @@ document.querySelectorAll('.btab').forEach(t => {
     state.barTab = t.dataset.btab;
     document.getElementById('tabFavorites').classList.toggle('hidden', state.barTab !== 'favorites');
     document.getElementById('tabInventory').classList.toggle('hidden', state.barTab !== 'inventory');
+    document.getElementById('tabShoppingList').classList.toggle('hidden', state.barTab !== 'shopping-list');
+    if (state.barTab === 'shopping-list') renderShoppingList();
   });
+});
+
+// Shopping list interactions
+document.getElementById('shoppingListItems').addEventListener('change', e => {
+  if (!e.target.matches('.shopping-checkbox')) return;
+  const idx = +e.target.dataset.idx;
+  state.shoppingList[idx].checked = e.target.checked;
+  save();
+  renderShoppingList();
+});
+
+document.getElementById('shoppingListItems').addEventListener('click', e => {
+  const btn = e.target.closest('.shopping-remove');
+  if (!btn) return;
+  const idx = +btn.dataset.remove;
+  state.shoppingList.splice(idx, 1);
+  save();
+  updateShoppingBadge();
+  renderShoppingList();
+});
+
+document.getElementById('clearShoppingBtn').addEventListener('click', () => {
+  if (!state.shoppingList.length) return;
+  state.shoppingList = [];
+  save();
+  updateShoppingBadge();
+  renderShoppingList();
+  toast('Shopping list cleared', 'info');
+});
+
+// Add-to-shopping-list buttons in AI results
+document.getElementById('aiResults').addEventListener('click', e => {
+  const btn = e.target.closest('.btn-add-shopping');
+  if (!btn) return;
+  const missing  = btn.dataset.missing.split('||').map(s => s.trim()).filter(Boolean);
+  const drinkName = btn.dataset.drink;
+  addToShoppingList(missing, drinkName);
+  btn.classList.add('added');
+  btn.textContent = 'Added to Shopping List';
 });
 
 document.getElementById('barToAIBtn').addEventListener('click', () => {
@@ -1589,6 +1719,7 @@ function capitalize(str) { return str.replace(/\b\w/g, c => c.toUpperCase()); }
 
 // ── INIT ──────────────────────────────────────────
 load();
+updateShoppingBadge();
 
 document.getElementById('enterBtn').addEventListener('click', () => {
   const gate = document.getElementById('ageGate');

@@ -318,6 +318,11 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="2"/></svg>
               Inventory
             </button>
+            <button class="btab" data-btab="shopping-list" style="position:relative">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+              Shopping List
+              <span class="shopping-badge hidden" id="shoppingBadge"></span>
+            </button>
           </div>
 
           <div id="tabFavorites">
@@ -335,6 +340,20 @@
             </div>
             <div class="inventory-sections" id="inventorySections">
               <!-- JS populated -->
+            </div>
+          </div>
+
+          <div id="tabShoppingList" class="hidden">
+            <div class="shopping-list-header">
+              <span class="shopping-count" id="shoppingCount">0 items</span>
+              <button class="btn-ghost" id="clearShoppingBtn">Clear All</button>
+            </div>
+            <div id="shoppingListItems"></div>
+            <div class="empty-state hidden" id="shoppingEmpty">
+              <svg viewBox="0 0 48 48" fill="none"><path d="M12 4L6 12v28a4 4 0 004 4h28a4 4 0 004-4V12l-6-8H12z" stroke="rgba(217,119,6,.4)" stroke-width="1.5"/><line x1="6" y1="12" x2="42" y2="12" stroke="rgba(217,119,6,.4)" stroke-width="1.5"/><path d="M32 20a8 8 0 01-16 0" stroke="rgba(217,119,6,.4)" stroke-width="1.5"/></svg>
+              <p>Your shopping list is empty.</p>
+              <p style="font-size:.85rem;color:var(--text-dim);margin-top:6px">Use the AI Bartender to find drinks and add missing ingredients here.</p>
+              <button class="btn-primary" data-nav="ai-bartender" style="margin-top:16px">Try AI Bartender</button>
             </div>
           </div>
         </section>
