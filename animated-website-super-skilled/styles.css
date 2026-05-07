@@ -491,6 +491,7 @@ p { margin: 0; }
 }
 
 /* ── EXPLORE ── */
+.load-more-wrap { display: flex; justify-content: center; margin: 32px 0 16px; }
 .explore-bar { margin-bottom: 16px; }
 .search-field {
   display: flex; align-items: center; gap: 12px;

@@ -660,29 +660,16 @@ async function loadExplore() {
 
 function renderExploreGrid() {
   const grid = document.getElementById('exploreGrid');
-  const sentinel = document.getElementById('exploreSentinel');
+  const wrap = document.getElementById('loadMoreWrap');
   if (!_exploreAll.length) {
     grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><p>No drinks found. Try a different search!</p></div>`;
-    if (sentinel) sentinel.innerHTML = '';
+    if (wrap) wrap.classList.add('hidden');
     return;
   }
   const showing = _exploreAll.slice(0, _exploreVisible);
   grid.innerHTML = showing.map(d => drinkCard(d)).join('');
-  if (sentinel) {
-    sentinel.innerHTML = _exploreAll.length > _exploreVisible
-      ? '<div class="loading-dots"><span></span><span></span><span></span></div>'
-      : '';
-  }
+  if (wrap) wrap.classList.toggle('hidden', _exploreAll.length <= _exploreVisible);
 }
-
-// Infinite scroll — fires when sentinel scrolls into view
-const _exploreObserver = new IntersectionObserver(entries => {
-  if (entries[0].isIntersecting && _exploreAll.length > _exploreVisible) {
-    _exploreVisible += 12;
-    renderExploreGrid();
-  }
-}, { rootMargin: '300px' });
-_exploreObserver.observe(document.getElementById('exploreSentinel'));
 
 // Explore search
 let exploreDebounce;
@@ -728,8 +715,7 @@ document.getElementById('spiritChips').addEventListener('click', async e => {
   await loadExplore();
 });
 
-const _loadMoreBtn = document.getElementById('loadMoreBtn');
-if (_loadMoreBtn) _loadMoreBtn.addEventListener('click', () => {
+document.getElementById('loadMoreBtn').addEventListener('click', () => {
   _exploreVisible += 12;
   renderExploreGrid();
 });
