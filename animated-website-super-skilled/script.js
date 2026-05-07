@@ -353,6 +353,21 @@ const filterByIng    = i   => api(`filter.php?i=${encodeURIComponent(i)}`).then(
 const filterByCat    = c   => api(`filter.php?c=${encodeURIComponent(c)}`).then(d => d?.drinks || []);
 const filterByAlc    = a   => api(`filter.php?a=${encodeURIComponent(a)}`).then(d => d?.drinks || []);
 
+// ── API CACHES ─────────────────────────────────────
+const _filterCache = new Map(); // ingredient → drinks[]
+const _lookupCache = new Map(); // id → drink
+
+const filterByIngCached = (i) => {
+  const key = i.toLowerCase();
+  if (_filterCache.has(key)) return Promise.resolve(_filterCache.get(key));
+  return filterByIng(i).catch(() => []).then(r => { _filterCache.set(key, r); return r; });
+};
+
+const lookupByIdCached = (id) => {
+  if (_lookupCache.has(id)) return Promise.resolve(_lookupCache.get(id));
+  return lookupById(id).catch(() => null).then(r => { if (r) _lookupCache.set(id, r); return r; });
+};
+
 // Convert a community recipe to the same shape drinkCard() expects
 function commToExploreCard(r) {
   return {
@@ -1002,10 +1017,16 @@ async function runAI() {
 
   document.getElementById('aiLoading').classList.remove('hidden');
 
-  // Fetch drinks for each ingredient
-  const sets = await Promise.all(ings.map(i => filterByIng(i).catch(() => [])));
+  // Cap API filter queries at 6 — more than that yields diminishing returns.
+  // All ingredients are still used for local scoring below.
+  const queryIngs = ings.length > 6
+    ? [...ings].sort((a, b) => a.length - b.length).slice(0, 6)
+    : ings;
 
-  // Count matches per drink
+  // Fetch (cached) drink lists for each queried ingredient
+  const sets = await Promise.all(queryIngs.map(filterByIngCached));
+
+  // Count how many of the queried ingredients each drink covers
   const counts = {};
   const drinkStore = {};
   sets.forEach(drinks => {
@@ -1015,11 +1036,11 @@ async function runAI() {
     });
   });
 
-  // Sort by match count descending
-  const sorted = Object.entries(counts).sort(([,a],[,b]) => b - a).slice(0, 24);
+  // Sort by match count descending, cap lookups at 18
+  const sorted = Object.entries(counts).sort(([,a],[,b]) => b - a).slice(0, 18);
 
-  // Fetch full details for top candidates
-  const details = await Promise.all(sorted.map(([id]) => lookupById(id).catch(() => null)));
+  // Fetch (cached) full details for top candidates
+  const details = await Promise.all(sorted.map(([id]) => lookupByIdCached(id)));
 
   const userIngs = ings.map(i => i.toLowerCase());
 
